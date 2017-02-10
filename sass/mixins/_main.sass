@@ -1,0 +1,21 @@
+=default($defaults)
+	@each $n,$default in $defaults
+		@extend #{&}.#{$default}
+
+=prefix($property, $value: none)
+	@each $vendor in $vendors
+		-#{$vendor}-#{$property}: $value
+	#{$property}: $value
+
+=pseudo-prefix($selectors...)
+	@each $vendor in $vendors
+		$selector: ''
+		@each $s in $selectors
+			$selector: $selector+'&::-'+$vendor+'-'+$s+', '
+		#{str-slice($selector, 0, -3)}
+			@content
+	$selector: ''
+	@each $s in $selectors
+		$selector: $selector+'&::'+$s+', '
+	#{str-slice($selector, 0, -3)}
+		@content

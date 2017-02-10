@@ -1,0 +1,119 @@
+@import partials/main
+
+html, body, main
+	height: 100%
+
+body
+	overflow: hidden
+	font-family: Helvetica, Arial, sans-serif
+	font-size: 14px
+	&[data-cursor-hidden]:not([data-keep])
+		cursor: none
+
+main
+	font-size: 0
+
+section
+	background: $black
+	width: 50%
+	height: 100%
+	position: relative
+	display: inline-block
+
+iframe
+	width: 100%
+	height: 100%
+
+.search
+	width: 100%
+	height: 100%
+	padding: 10px
+	box-sizing: border-box
+	opacity: 0
+	position: absolute
+	transition: opacity 0.4s
+	&[data-visible]
+		opacity: 1
+	input, ul
+		width: 100%
+		+prefix(backdrop-filter, blur(20px))
+	ul
+		background: transparentize($white, 0.7)
+		max-height: calc(100vh - 71px)
+		border-radius: 0 0 6px 6px
+		overflow: scroll
+		display: none
+	li
+		border-top: 1px solid transparentize($white, 0.9)
+		padding: 10px
+		display: flex
+		align-items: center
+		font-size: 14px
+		cursor: pointer
+		&:hover, &:active
+			border-top-color: transparent
+			+ li
+				border-top-color: transparent
+		&:hover
+			background: transparentize($white, 0.95)
+		&:active
+			background: transparentize($white, 0.9)
+		&:first-of-type
+			border-top: none
+		&.empty
+			justify-content: center
+			padding: 20px
+			color: transparentize($white, 0.4)
+			cursor: default
+			&:hover, &:active
+				background: transparent
+		.thumbnail
+			background: $black
+			width: 60px
+			height: 45px
+			margin-right: 20px
+			border-radius: 5px
+			overflow: hidden
+			position: relative
+			flex-shrink: 0
+			img
+				width: auto
+				height: 100%
+				left: 50%
+				top: 50%
+				position: relative
+				display: block
+				transform: translate(-50%, -50%)
+		.infos span
+			display: block
+		.title
+			color: transparentize($black, 0.3)
+		.channel
+			margin-top: 5px
+			color: transparentize($black, 0.6)
+			font-size: 9px
+			font-weight: bold
+			text-transform: uppercase
+			letter-spacing: 1px
+	input
+		background: transparentize($white, 0.8)
+		margin: 0
+		padding: 15px
+		border: none
+		border-radius: 6px
+		box-sizing: border-box
+		outline: none
+		display: block
+		font-family: Helvetica, Arial, sans-serif
+		font-size: 18px
+		color: transparentize($white, 0.4)
+		+prefix(appearance, none)
+		+placeholder
+			color: transparentize($black, 0.4)
+		transition: 0.3s
+		&:hover, &:focus
+			background: transparentize($white, 0.7)
+		&[data-searching]
+			border-radius: 6px 6px 0 0
+			+ ul
+				display: block

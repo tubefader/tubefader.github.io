@@ -1,0 +1,23 @@
+=max-width($width)
+	@media screen and (max-width: $width)
+		@content
+
+=min-width($width)
+	@media screen and (min-width: $width)
+		@content
+
+=max-height($height)
+	@media screen and (max-height: $height)
+		@content
+
+=min-height($height)
+	@media screen and (min-height: $height)
+		@content
+
+=max($breakpoint)
+	+max-width(map-get($breakpoints, $breakpoint))
+		@content
+
+=min($breakpoint)
+	+min-width(map-get($breakpoints, $breakpoint))
+		@content
