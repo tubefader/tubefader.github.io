@@ -75,7 +75,7 @@ var main = {
 					q: keywords,
 					part: 'snippet',
 					type: 'video',
-					videoEmbeddable: 'true',
+					videoSyndicated: 'true',
 					maxResults: 15
 				}).execute(function(response) {
 					if(main.exists(response, 'result', 'items')) {
@@ -92,12 +92,12 @@ var main = {
 					id: id,
 					part: 'snippet,status',
 					type: 'video',
+					videoSyndicated: 'true',
 					maxResults: 1
 				}).execute(function(response) {
 					if(main.exists(response, 'result', 'items')) {
 						if(response.result.items.length > 0) {
-							var item = response.result.items[0];
-							if(item.status.embeddable) callback(new self.Video(item));
+							callback(new self.Video(response.result.items[0]));
 						}
 						else callback(null);
 					}
@@ -113,7 +113,7 @@ var main = {
 						relatedToVideoId: video.id,
 						part: 'snippet',
 						type: 'video',
-						videoEmbeddable: 'true',
+						videoSyndicated: 'true',
 						maxResults: video.related+1
 					}).execute(function(response) {
 						if(main.exists(response, 'result', 'items')) {
@@ -248,6 +248,17 @@ var main = {
 					if(v) self.video.setAttribute('data-active', '');
 					else self.video.removeAttribute('data-active');
 				}
+			},
+			unreachable: {
+				set: function(v) {
+					if(v) this.search.setAttribute('data-unreachable', '');
+					else this.search.removeAttribute('data-unreachable');
+				}
+			},
+			isEmpty: {
+				get: function() {
+					return self.results.querySelector('.empty') !== null;
+				}
 			}
 		});
 
@@ -343,6 +354,7 @@ var main = {
 		this.load = function(video, callback, overwrite) {
 			if(video === null) {
 				this.input.value = 'The video is unreachable';
+				this.unreachable = true;
 			}
 			else {
 				callback = typeof callback === 'function' ? callback : function() {};
@@ -420,6 +432,10 @@ var main = {
 			self.hide();
 		});
 
+		this.video.addEventListener('error', function(event) {
+			self.load(null);
+		});
+
 		this.video.addEventListener('timeupdate', function() {
 			if(self.duration - self.currentTime <= main.config.fadeDuration/1000) {
 				self.pause(false, function() {
@@ -432,37 +448,13 @@ var main = {
 			self.progress = self.currentTime/self.duration;
 		});
 
-		this.element.addEventListener('click', function(event) {
-			if(!self.input.focused) {
-				if(self.paused && !self.opposite.paused) {
-					self.play();
-					self.opposite.pause();
-				}
-				else if(!self.paused && self.opposite.paused) {
-					self.opposite.play();
-					self.pause();
-				}
-				else if(main.was) {
-					main.was.play(true);
-				}
-			}
-		});
-
 		this.results.addEventListener('click', function(event) {
 			main.config.open = false;
 			event.stopPropagation();
 		});
 
-		this.results.addEventListener('dblclick', function(event) {
-			event.stopPropagation();
-		});
-
 		this.input.addEventListener('click', function(event) {
 			main.config.open = false;
-			event.stopPropagation();
-		});
-
-		this.input.addEventListener('dblclick', function(event) {
 			event.stopPropagation();
 		});
 
@@ -481,29 +473,74 @@ var main = {
 			self.hide();
 		});
 
-		this.input.addEventListener('keydown', function(event) {
-			var results = self.results.querySelectorAll('li');
-			if(event.keyCode == 38 || event.keyCode == 40) {
-				if(event.keyCode == 38) {
-					self.offset--;
-					if(self.offset < 0) self.offset = results.length - 1;
+		var search = function(input) {
+			self.unreachable = false;
+			setTimeout(function() {
+				var value = input.value;
+
+				if(value === '') {
+					self.searching = false;
+					self.results.innerHTML = '';
 				}
 				else {
-					self.offset++;
-					if(self.offset >= results.length) self.offset = 0;
+					var id = self.url(value);
+					if(id) {
+						main.api.infos(id, function(result) {
+							self.searching = true;
+							self.results.innerHTML = '';
+							if(result) {
+								self.results.appendChild(self.result(result));
+							}
+							else self.results.appendChild(empty);
+						});
+					}
+					else {
+						main.api.search(value, function(results) {
+							self.searching = true;
+							self.results.innerHTML = '';
+							if(results.length === 0) {
+								self.results.appendChild(empty);
+							}
+							else {
+								for(var i = 0; i < results.length; i++) self.results.appendChild(self.result(results[i]));
+							}
+							self.offset = -1;
+						});
+					}
 				}
-				var result = results[self.offset];
-				for(var i = 0; i < results.length; i++) results[i].removeAttribute('data-selected');
-				result.setAttribute('data-selected', '');
+			}, 1);
+		};
 
-				var min = result.offsetHeight*self.offset;
-				var max = result.offsetHeight*(self.offset-1);
+		this.input.addEventListener('paste', function(event) {
+			search(this);
+		});
 
-				if(self.results.scrollTop < min) self.results.scrollTop = min;
-				if(self.results.scrollTop > max) self.results.scrollTop = max;
+		this.input.addEventListener('keydown', function(event) {
+			event.stopPropagation();
+			var results = self.results.querySelectorAll('li');
+			if(event.keyCode == 38 || event.keyCode == 40) {
+				if(!self.isEmpty) {
+					if(event.keyCode == 38) {
+						self.offset--;
+						if(self.offset < 0) self.offset = results.length - 1;
+					}
+					else {
+						self.offset++;
+						if(self.offset >= results.length) self.offset = 0;
+					}
+					var result = results[self.offset];
+					for(var i = 0; i < results.length; i++) results[i].removeAttribute('data-selected');
+					result.setAttribute('data-selected', '');
+
+					var min = result.offsetHeight*self.offset;
+					var max = result.offsetHeight*(self.offset-1);
+
+					if(self.results.scrollTop < min) self.results.scrollTop = min;
+					if(self.results.scrollTop > max) self.results.scrollTop = max;
+				}
 			}
 			else if(event.keyCode == 13) {
-				if(self.offset >= 0 && self.offset < results.length) {
+				if(!self.isEmpty && self.offset >= 0 && self.offset < results.length) {
 					load(results[self.offset].video)();
 					this.blur();
 				}
@@ -513,41 +550,7 @@ var main = {
 				event.preventDefault();
 			}
 			else if(![37, 39, 16].includes(event.keyCode)) {
-				var input = this;
-				setTimeout(function() {
-					var value = input.value;
-
-					if(value === '') {
-						self.searching = false;
-						self.results.innerHTML = '';
-					}
-					else {
-						var id = self.url(value);
-						if(id) {
-							main.api.infos(id, function(result) {
-								self.searching = true;
-								self.results.innerHTML = '';
-								if(result) {
-									self.results.appendChild(self.result(result));
-								}
-								else self.results.appendChild(empty);
-							});
-						}
-						else {
-							main.api.search(value, function(results) {
-								self.searching = true;
-								self.results.innerHTML = '';
-								if(results.length === 0) {
-									self.results.appendChild(empty);
-								}
-								else {
-									for(var i = 0; i < results.length; i++) self.results.appendChild(self.result(results[i]));
-								}
-								self.offset = -1;
-							});
-						}
-					}
-				}, 1);
+				search(this);
 			}
 		});
 	},
@@ -654,6 +657,24 @@ var main = {
 		this.left = new this.Side('left', 'right');
 		this.right = new this.Side('right', 'left');
 
+		var click = function() {
+			if(!self.left.input.focused && !self.right.input.focused) {
+				if(self.left.paused && !self.right.paused) {
+					self.left.play();
+					self.right.pause();
+				}
+				else if(!self.left.paused && self.right.paused) {
+					self.right.play();
+					self.left.pause();
+				}
+				else if(self.was) {
+					self.was.play(true);
+				}
+			}
+		};
+
+		window.addEventListener('click', click);
+
 		window.addEventListener('keydown', function(event) {
 			if(event.keyCode == 32  && !self.left.input.focused && !self.right.input.focused) {
 				if(!self.left.paused || !self.right.paused) {
@@ -666,6 +687,7 @@ var main = {
 					else self.left.play(true);
 				}
 			}
+			else if(event.keyCode == 37 || event.keyCode == 39) click();
 		});
 	}
 };
