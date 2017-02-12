@@ -300,12 +300,13 @@ var main = {
 
 		this.play = function(now, callback, onPlay) {
 			if(now) {
+				this.volume = 1;
 				this.video.play();
 				this.active = true;
 				this.opposite.active = false;
 			}
 			else {
-				this.volume = 0;
+				main.was = this;
 				var canplay = function() {
 					self.video.removeEventListener('canplay', canplay);
 					var play = function() {
@@ -317,7 +318,10 @@ var main = {
 						else self.fade(1, callback);
 					};
 					self.video.addEventListener('play', play);
-					self.play(true);
+					self.pause(true);
+					self.video.play();
+					self.active = true;
+					self.opposite.active = false;
 				};
 				if(!this.ready) this.video.addEventListener('canplay', canplay);
 				else canplay();
@@ -386,6 +390,7 @@ var main = {
 				this.input.value = video.title;
 				this.pause(true);
 				this.video.object = video;
+				this.volume = 0;
 				this.overwritten = overwrite ? true : false;
 				main.element.setAttribute('data-init', '');
 
@@ -595,7 +600,7 @@ var main = {
 				this.blur();
 				event.preventDefault();
 			}
-			else if(![37, 39, 16].includes(event.keyCode)) {
+			else if(![37, 39, 16, 91, 16, 17, 18].includes(event.keyCode)) {
 				search(this);
 			}
 		});
@@ -720,9 +725,15 @@ var main = {
 						self.left.pause();
 					}, true);
 				}
-				else if(self.was) {
-					self.was.volume = 1;
-					self.was.play(true);
+				else if(self.was !== null) {
+					if(!self.left.paused && !self.right.paused) {
+						self.was.pause();
+						self.was.opposite.play();
+					}
+					else {
+						self.was.volume = 1;
+						self.was.play(true);
+					}
 				}
 			}
 		};
