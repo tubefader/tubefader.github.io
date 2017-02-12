@@ -743,7 +743,7 @@ var main = {
 		window.addEventListener('keydown', function(event) {
 			if(event.keyCode == 32  && !self.left.focused && !self.right.focused) {
 				if(!self.left.paused || !self.right.paused) {
-					self.was = !self.left.paused ? self.left : self.right;
+					if(self.was === null) self.was = !self.left.paused ? self.left : self.right;
 					self.left.pause(true);
 					self.right.pause(true);
 				}
