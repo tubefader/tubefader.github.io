@@ -20,7 +20,7 @@ section
 	position: relative
 	display: inline-block
 
-iframe
+video
 	width: 100%
 	height: 100%
 
@@ -42,6 +42,8 @@ iframe
 		max-height: calc(100vh - 71px)
 		border-radius: 0 0 6px 6px
 		overflow: scroll
+		z-index: 5
+		position: relative
 		display: none
 	li
 		border-top: 1px solid transparentize($white, 0.9)
@@ -50,13 +52,13 @@ iframe
 		align-items: center
 		font-size: 14px
 		cursor: pointer
-		&:hover, &:active
+		&:hover, &:active, &[data-selected]
 			border-top-color: transparent
 			+ li
 				border-top-color: transparent
 		&:hover
 			background: transparentize($white, 0.95)
-		&:active
+		&:active, &[data-selected]
 			background: transparentize($white, 0.9)
 		&:first-of-type
 			border-top: none
@@ -65,7 +67,7 @@ iframe
 			padding: 20px
 			color: transparentize($white, 0.4)
 			cursor: default
-			&:hover, &:active
+			&:hover, &:active, &[data-selected]
 				background: transparent
 		.thumbnail
 			background: $black
@@ -117,3 +119,62 @@ iframe
 			border-radius: 6px 6px 0 0
 			+ ul
 				display: block
+
+.progress
+	background: transparentize($white, 0.8)
+	width: 0
+	height: 3px
+	margin-top: -3px
+
+.controls
+	background: transparentize($white, 0.8)
+	width: 120px
+	height: 30px
+	padding: 20px 15px
+	border-radius: 100px
+	top: 50%
+	left: 50%
+	margin: -30px 0 0 -75px
+	position: absolute
+	z-index: 4
+	display: flex
+	align-items: center
+	justify-content: space-between
+	opacity: 1
+	transition: 0.4s
+	+prefix(backdrop-filter, blur(20px))
+	span
+		background: no-repeat center center / contain
+		cursor: pointer
+		opacity: 0.5
+		transition: opacity 0.2s, transform 0.2s
+		&[data-disabled]
+			cursor: default
+			opacity: 0.2
+	.switch-left, .switch-right
+		width: 30px
+		height: 30px
+	.switch-left
+		background-image: url('/assets/left.svg')
+		order: 1
+		&:hover:not([data-disabled])
+			transform: translateX(-5px)
+	.switch-right
+		background-image: url('/assets/right.svg')
+		order: 3
+		&:hover:not([data-disabled])
+			transform: translateX(5px)
+	.play
+		background-image: url('/assets/play.svg')
+		width: 20px
+		height: 20px
+		order: 2
+		&[data-pause]
+			background-image: url('/assets/pause.svg')
+		&:hover:not([data-disabled])
+			transform: scale(1.3)
+
+[data-cursor-hidden] .controls
+	opacity: 0
+	&:hover
+		opacity: 1
