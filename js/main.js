@@ -92,7 +92,6 @@ var main = {
 					id: id,
 					part: 'snippet,status',
 					type: 'video',
-					videoSyndicated: 'true',
 					maxResults: 1
 				}).execute(function(response) {
 					if(main.exists(response, 'result', 'items')) {
@@ -122,7 +121,7 @@ var main = {
 								var index = items.length > video.related+1 ? video.related+1 : 0;
 								callback(new self.Video(items[index], video));
 							}
-							else callack(null);
+							else callback(null);
 						}
 					});
 				});
@@ -433,7 +432,18 @@ var main = {
 		});
 
 		this.video.addEventListener('error', function(event) {
-			self.load(null);
+			if(!self.opposite.paused && !self.overwritten) {
+				var word = self.opposite.video.object.title.match(/^(.+?)(?:\s.*|)$/)[1];
+				console.log(word);
+				main.api.search(word, function(results) {
+					var result;
+					for(var i = results.length - 1; i >= 0; i--) {
+						result = results[i];
+						if(result.id != self.opposite.video.object.id) self.load(result);
+					}
+				});
+			}
+			else self.load(null);
 		});
 
 		this.video.addEventListener('timeupdate', function() {
@@ -668,6 +678,7 @@ var main = {
 					self.left.pause();
 				}
 				else if(self.was) {
+					self.was.volume = 1;
 					self.was.play(true);
 				}
 			}
@@ -683,8 +694,9 @@ var main = {
 					self.right.pause(true);
 				}
 				else {
-					if(self.was) self.was.play(true);
-					else self.left.play(true);
+					if(self.was === null) self.was = self.left;
+					self.was.volume = 1;
+					self.was.play(true);
 				}
 			}
 			else if(event.keyCode == 37 || event.keyCode == 39) click();
