@@ -371,6 +371,7 @@ var main = {
 				this.unreachable = true;
 			}
 			else {
+				this.loading = true;
 				this.unreachable = false;
 				callback = typeof callback === 'function' ? callback : function() {};
 				this.poster = video.thumbnails;
@@ -379,6 +380,13 @@ var main = {
 				this.video.object = video;
 				this.overwritten = overwrite ? true : false;
 				main.element.setAttribute('data-init', '');
+
+				var canplay = function() {
+					self.loading = false;
+					self.video.removeEventListener('canplay', canplay);
+				};
+				this.video.addEventListener('canplay', canplay);
+
 				video.src(function(src) {
 					self.progress = 0;
 					self.src = src;
