@@ -67,7 +67,7 @@ var main = {
 				});
 			};
 		},
-		search: function(keywords, callback) {
+		search: function(keywords, callback, strict) {
 			var self = this;
 
 			this.do(function() {
@@ -76,7 +76,8 @@ var main = {
 					part: 'snippet',
 					type: 'video',
 					videoSyndicated: 'true',
-					maxResults: 15
+					maxResults: 15,
+					videoCategoryId: strict ? 10 : undefined,
 				}).execute(function(response) {
 					if(main.exists(response, 'result', 'items')) {
 						callback(new self.Video(response.result.items));
@@ -258,6 +259,12 @@ var main = {
 				get: function() {
 					return self.results.querySelector('.empty') !== null;
 				}
+			},
+			loading: {
+				set: function(v) {
+					if(v) this.element.setAttribute('data-loading', '');
+					else this.element.removeAttribute('data-loading');
+				}
 			}
 		});
 
@@ -283,7 +290,7 @@ var main = {
 			}
 		};
 
-		this.play = function(now, callback) {
+		this.play = function(now, callback, onPlay) {
 			if(now) {
 				this.video.play();
 				this.active = true;
@@ -291,13 +298,21 @@ var main = {
 			}
 			else {
 				this.volume = 0;
-				var play = function() {
+				var canplay = function() {
+					self.video.removeEventListener('canplay', canplay);
+					var play = function() {
+						self.video.removeEventListener('play', play);
+						if(onPlay) {
+							callback();
+							self.fade(1);
+						}
+						else self.fade(1, callback);
+					};
+					self.video.addEventListener('play', play);
 					self.play(true);
-					self.fade(1, callback);
-					self.video.removeEventListener('canplay', play);
 				};
-				if(!this.ready) this.video.addEventListener('canplay', play);
-				else play();
+				if(!this.ready) this.video.addEventListener('canplay', canplay);
+				else canplay();
 			}
 		};
 
@@ -356,6 +371,7 @@ var main = {
 				this.unreachable = true;
 			}
 			else {
+				this.unreachable = false;
 				callback = typeof callback === 'function' ? callback : function() {};
 				this.poster = video.thumbnails;
 				this.input.value = video.title;
@@ -434,14 +450,16 @@ var main = {
 		this.video.addEventListener('error', function(event) {
 			if(!self.opposite.paused && !self.overwritten) {
 				var word = self.opposite.video.object.title.match(/^(.+?)(?:\s.*|)$/)[1];
-				console.log(word);
 				main.api.search(word, function(results) {
 					var result;
 					for(var i = results.length - 1; i >= 0; i--) {
 						result = results[i];
-						if(result.id != self.opposite.video.object.id) self.load(result);
+						if(result.id != self.opposite.video.object.id) {
+							self.load(result);
+							break;
+						}
 					}
-				});
+				}, true);
 			}
 			else self.load(null);
 		});
@@ -669,13 +687,20 @@ var main = {
 
 		var click = function() {
 			if(!self.left.input.focused && !self.right.input.focused) {
+				var play;
 				if(self.left.paused && !self.right.paused) {
-					self.left.play();
-					self.right.pause();
+					self.left.loading = true;
+					self.left.play(false, function() {
+						self.left.loading = false;
+						self.right.pause();
+					}, true);
 				}
 				else if(!self.left.paused && self.right.paused) {
-					self.right.play();
-					self.left.pause();
+					self.right.loading = true;
+					self.right.play(false, function() {
+						self.right.loading = false;
+						self.left.pause();
+					}, true);
 				}
 				else if(self.was) {
 					self.was.volume = 1;
