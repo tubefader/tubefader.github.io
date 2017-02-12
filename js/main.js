@@ -75,6 +75,7 @@ var main = {
 					q: keywords,
 					part: 'snippet',
 					type: 'video',
+					videoEmbeddable: 'true',
 					maxResults: 15
 				}).execute(function(response) {
 					if(main.exists(response, 'result', 'items')) {
@@ -89,12 +90,15 @@ var main = {
 			this.do(function() {
 				gapi.client.youtube.videos.list({
 					id: id,
-					part: 'snippet',
+					part: 'snippet,status',
 					type: 'video',
 					maxResults: 1
 				}).execute(function(response) {
 					if(main.exists(response, 'result', 'items')) {
-						if(response.result.items.length > 0) callback(new self.Video(response.result.items[0]));
+						if(response.result.items.length > 0) {
+							var item = response.result.items[0];
+							if(item.status.embeddable) callback(new self.Video(item));
+						}
 						else callback(null);
 					}
 				});
@@ -109,12 +113,16 @@ var main = {
 						relatedToVideoId: video.id,
 						part: 'snippet',
 						type: 'video',
+						videoEmbeddable: 'true',
 						maxResults: video.related+1
 					}).execute(function(response) {
 						if(main.exists(response, 'result', 'items')) {
 							var items = response.result.items;
-							var index = items.length > video.related+1 ? video.related+1 : 0;
-							if(items.length > 0) callback(new self.Video(response.result.items[index], video));
+							if(items.length > 0) {
+								var index = items.length > video.related+1 ? video.related+1 : 0;
+								callback(new self.Video(items[index], video));
+							}
+							else callack(null);
 						}
 					});
 				});
@@ -333,18 +341,23 @@ var main = {
 		};
 
 		this.load = function(video, callback, overwrite) {
-			callback = typeof callback === 'function' ? callback : function() {};
-			self.poster = video.thumbnails;
-			self.input.value = video.title;
-			this.pause(true);
-			this.video.object = video;
-			this.overwritten = overwrite ? true : false;
-			main.element.setAttribute('data-init', '');
-			video.src(function(src) {
-				self.progress = 0;
-				self.src = src;
-				callback();
-			});
+			if(video === null) {
+				this.input.value = 'The video is unreachable';
+			}
+			else {
+				callback = typeof callback === 'function' ? callback : function() {};
+				this.poster = video.thumbnails;
+				this.input.value = video.title;
+				this.pause(true);
+				this.video.object = video;
+				this.overwritten = overwrite ? true : false;
+				main.element.setAttribute('data-init', '');
+				video.src(function(src) {
+					self.progress = 0;
+					self.src = src;
+					callback();
+				});
+			}
 		};
 
 		this.hideLater = function() {
