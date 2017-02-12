@@ -1,5 +1,6 @@
 var main = {
-	first: true,
+	element: document.querySelector('main'),
+	was: null,
 	exists: function() {
 		if(arguments.length > 0) {
 			var object = typeof arguments[0] === 'string' ? window[arguments[0]] : arguments[0];
@@ -172,8 +173,14 @@ var main = {
 			},
 			searching: {
 				set: function(v) {
-					if(v) this.input.setAttribute('data-searching', '');
-					else this.input.removeAttribute('data-searching');
+					if(v) {
+						this.input.setAttribute('data-searching', '');
+						main.config.hidden = true;
+					}
+					else {
+						this.input.removeAttribute('data-searching');
+						main.config.hidden = false;
+					}
 				}
 			},
 			src: {
@@ -227,6 +234,12 @@ var main = {
 				set: function(v) {
 					this.progressElement.style.width = 100*v+'%';
 				}
+			},
+			active: {
+				set: function(v) {
+					if(v) self.video.setAttribute('data-active', '');
+					else self.video.removeAttribute('data-active');
+				}
 			}
 		});
 
@@ -253,10 +266,12 @@ var main = {
 		};
 
 		this.play = function(now, callback) {
-			if(now) this.video.play();
+			if(now) {
+				this.video.play();
+				this.active = true;
+				this.opposite.active = false;
+			}
 			else {
-				main.controls.side = className;
-				main.controls.playing = true;
 				this.volume = 0;
 				var play = function() {
 					self.play(true);
@@ -269,7 +284,10 @@ var main = {
 		};
 
 		this.pause = function(now, callback) {
-			if(now) this.video.pause();
+			if(now) {
+				this.video.pause();
+				this.active = false;
+			}
 			else {
 				callback = typeof callback === 'function' ? callback : function() {};
 				this.fade(0, function() {
@@ -284,7 +302,7 @@ var main = {
 		};
 
 		this.ease = function(progress, destination) {
-			return Math.pow(1 - destination - progress, 2)*3;
+			return main.config.ease == 'ease' ? Math.pow(1 - destination - progress, 2)*3 : 1;
 		};
 
 		this.fade = function(destination, callback) {
@@ -304,7 +322,7 @@ var main = {
 				if(t < duration || self.volume != destination) {
 					if(delta > 0) {
 						previous = t;
-						self.volume += step*delta; // *self.ease(t/duration, destination)
+						self.volume += step*delta*self.ease(t/duration, destination);
 					}
 				}
 				else {
@@ -321,6 +339,7 @@ var main = {
 			this.pause(true);
 			this.video.object = video;
 			this.overwritten = overwrite ? true : false;
+			main.element.setAttribute('data-init', '');
 			video.src(function(src) {
 				self.progress = 0;
 				self.src = src;
@@ -339,7 +358,7 @@ var main = {
 			return function() {
 				self.load(video, function() {
 					if(self.opposite.paused) {
-						self.play();
+						self.play(true);
 						if(!self.opposite.overwritten) {
 							main.api.related(video, function(related) {
 								self.opposite.load(related);
@@ -400,6 +419,40 @@ var main = {
 			self.progress = self.currentTime/self.duration;
 		});
 
+		this.element.addEventListener('click', function(event) {
+			if(!self.input.focused) {
+				if(self.paused && !self.opposite.paused) {
+					self.play();
+					self.opposite.pause();
+				}
+				else if(!self.paused && self.opposite.paused) {
+					self.opposite.play();
+					self.pause();
+				}
+				else if(main.was) {
+					main.was.play(true);
+				}
+			}
+		});
+
+		this.results.addEventListener('click', function(event) {
+			main.config.open = false;
+			event.stopPropagation();
+		});
+
+		this.results.addEventListener('dblclick', function(event) {
+			event.stopPropagation();
+		});
+
+		this.input.addEventListener('click', function(event) {
+			main.config.open = false;
+			event.stopPropagation();
+		});
+
+		this.input.addEventListener('dblclick', function(event) {
+			event.stopPropagation();
+		});
+
 		this.input.addEventListener('focus', function() {
 			self.keep = true;
 			if(self.results.innerHTML !== '') self.searching = true;
@@ -439,8 +492,12 @@ var main = {
 			else if(event.keyCode == 13) {
 				if(self.offset >= 0 && self.offset < results.length) {
 					load(results[self.offset].video)();
-					self.input.blur();
+					this.blur();
 				}
+			}
+			else if(event.keyCode == 27) {
+				this.blur();
+				event.preventDefault();
 			}
 			else if(![37, 39, 16].includes(event.keyCode)) {
 				var input = this;
@@ -517,69 +574,86 @@ var main = {
 	left: null,
 	right: null,
 	config: {
-		fadeDuration: 10000
-	},
-	controls: {
-		left: document.querySelector('.switch-left'),
-		right: document.querySelector('.switch-right'),
-		play: document.querySelector('.play'),
-		was: null,
-		set side(v) {
-			this.left.removeAttribute('data-disabled');
-			this.right.removeAttribute('data-disabled');
-			this[v].setAttribute('data-disabled', '');
+		element: document.querySelector('.config'),
+		toggler: document.querySelector('.config span'),
+		inputs: {
+			fadeDuration: document.querySelector('#config-fade-duration'),
+			fadeCurve: document.querySelector('#config-fade-curve')
 		},
-		set playing(v) {
-			this.play.removeAttribute('data-disabled');
-			if(v) this.play.setAttribute('data-pause', '');
-			else this.play.removeAttribute('data-pause');
+		get open() {
+			return this.element.getAttribute('data-open') !== null;
 		},
-		get playing() {
-			return this.play.getAttribute('data-pause') !== null;
+		set open(v) {
+			if(v) this.element.setAttribute('data-open', '');
+			else this.element.removeAttribute('data-open');
 		},
-		disabled: function(element) {
-			return element.getAttribute('data-disabled') !== null;
+		set hidden(v) {
+			if(v) this.element.setAttribute('data-hidden', '');
+			else this.element.removeAttribute('data-hidden');
 		},
+		fadeDuration: 10000,
+		fadeCurve: 'ease',
 		init: function() {
 			var self = this;
 
-			this.left.addEventListener('click', function() {
-				if(!self.disabled(this)) {
-					main.left.play();
-					main.right.pause();
-				}
+			this.element.addEventListener('click', function(event) {
+				event.stopPropagation();
 			});
-			this.right.addEventListener('click', function() {
-				if(!self.disabled(this)) {
-					main.right.play();
-					main.left.pause();
-				}
+
+			this.toggler.addEventListener('click', function() {
+				self.open = !self.open;
 			});
-			this.play.addEventListener('click', function() {
-				if(self.playing) {
-					self.playing = false;
-					if(!main.right.paused) {
-						self.was = main.right;
-						main.right.pause(true);
-					}
-					else if(!main.left.paused) {
-						self.was = main.left;
-						main.left.pause(true);
-					}
-				}
-				else if(self.was !== null) {
-					self.playing = true;
-					self.was.play(true);
+
+			this.inputs.fadeDuration.addEventListener('keydown', function() {
+				var input = this;
+				setTimeout(function() {
+					var fadeDuration = parseFloat(input.value);
+					if(!isNaN(fadeDuration)) self.fadeDuration = fadeDuration*1000;
+				}, 1);
+			});
+
+			this.inputs.fadeDuration.addEventListener('change', function() {
+				this.value = self.fadeDuration/1000;
+			});
+
+			this.inputs.fadeCurve.addEventListener('change', function() {
+				self.fadeCurve = this.value;
+			});
+
+			window.addEventListener('click', function() {
+				self.open = false;
+			});
+
+			window.addEventListener('keydown', function(event) {
+				if(event.keyCode == 27 && self.open) {
+					self.open = false;
+					event.preventDefault();
 				}
 			});
 		}
 	},
 	init: function() {
+		var self = this;
+
 		this.api.init();
 		this.cursor.init();
+		this.config.init();
 		this.left = new this.Side('left', 'right');
 		this.right = new this.Side('right', 'left');
-		this.controls.init();
+
+		window.addEventListener('keydown', function(event) {
+			if(event.keyCode == 32  && !self.left.input.focused && !self.right.input.focused) {
+				if(!self.left.paused || !self.right.paused) {
+					self.was = !self.left.paused ? self.left : self.right;
+					self.left.pause(true);
+					self.right.pause(true);
+				}
+				else {
+					if(self.was) self.was.play(true);
+					else self.left.play(true);
+				}
+			}
+		});
 	}
 };
 

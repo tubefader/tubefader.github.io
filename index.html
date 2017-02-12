@@ -8,10 +8,21 @@
 	</head>
 	<body>
 		<main>
-			<div class="controls">
-				<span class="play" data-disabled></span>
-				<span class="switch-left" data-disabled></span>
-				<span class="switch-right" data-disabled></span>
+			<div class="config">
+				<span>Config</span>
+				<div class="content">
+					<div>
+						<label for="config-fade-duration">Fade duration</label>
+						<input value="10" id="config-fade-duration" autocomplete="off"/>
+					</div>
+					<div>
+						<label for="config-fade-curve">Fade curve</label>
+						<select id="config-fade-curve">
+							<option value="ease" selected>Ease</option>
+							<option value="linear">Linear</option>
+						</select>
+					</div>
+				</div>
 			</div>
 			<section class="left">
 				<div class="search">
