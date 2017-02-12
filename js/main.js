@@ -251,7 +251,10 @@ var main = {
 			},
 			unreachable: {
 				set: function(v) {
-					if(v) this.search.setAttribute('data-unreachable', '');
+					if(v) {
+						this.search.setAttribute('data-unreachable', '');
+						this.loading = false;
+					}
 					else this.search.removeAttribute('data-unreachable');
 				}
 			},
@@ -264,6 +267,11 @@ var main = {
 				set: function(v) {
 					if(v) this.element.setAttribute('data-loading', '');
 					else this.element.removeAttribute('data-loading');
+				}
+			},
+			focused: {
+				get: function() {
+					return this.input === document.activeElement;
 				}
 			}
 		});
@@ -457,17 +465,19 @@ var main = {
 
 		this.video.addEventListener('error', function(event) {
 			if(!self.opposite.paused && !self.overwritten) {
-				var word = self.opposite.video.object.title.match(/^(.+?)(?:\s.*|)$/)[1];
-				main.api.search(word, function(results) {
-					var result;
-					for(var i = results.length - 1; i >= 0; i--) {
-						result = results[i];
-						if(result.id != self.opposite.video.object.id) {
-							self.load(result);
-							break;
+				if(!self.focused) {
+					var word = self.opposite.video.object.title.match(/^(.+?)(?:\s.*|)$/)[1];
+					main.api.search(word, function(results) {
+						var result;
+						for(var i = results.length - 1; i >= 0; i--) {
+							result = results[i];
+							if(result.id != self.opposite.video.object.id) {
+								self.load(result);
+								break;
+							}
 						}
-					}
-				}, true);
+					}, true);
+				}
 			}
 			else self.load(null);
 		});
@@ -694,7 +704,7 @@ var main = {
 		this.right = new this.Side('right', 'left');
 
 		var click = function() {
-			if(!self.left.input.focused && !self.right.input.focused) {
+			if(!self.left.focused && !self.right.focused) {
 				var play;
 				if(self.left.paused && !self.right.paused) {
 					self.left.loading = true;
@@ -720,7 +730,7 @@ var main = {
 		window.addEventListener('click', click);
 
 		window.addEventListener('keydown', function(event) {
-			if(event.keyCode == 32  && !self.left.input.focused && !self.right.input.focused) {
+			if(event.keyCode == 32  && !self.left.focused && !self.right.focused) {
 				if(!self.left.paused || !self.right.paused) {
 					self.was = !self.left.paused ? self.left : self.right;
 					self.left.pause(true);
