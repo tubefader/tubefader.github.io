@@ -39,6 +39,7 @@ var main = {
 					xhr.onreadystatechange = function(event) {
 						if(xhr.readyState == 4 && xhr.status == 200) {
 							var response = JSON.parse(xhr.responseText);
+							console.log(response);
 							callback(response.url);
 						}
 					};
@@ -183,10 +184,12 @@ var main = {
 				set: function(v) {
 					if(v) {
 						this.input.setAttribute('data-searching', '');
+						main.fullscreen.hidden = true;
 						main.config.hidden = true;
 					}
 					else {
 						this.input.removeAttribute('data-searching');
+						main.fullscreen.hidden = false;
 						main.config.hidden = false;
 					}
 				}
@@ -247,6 +250,7 @@ var main = {
 				set: function(v) {
 					if(v) self.video.setAttribute('data-active', '');
 					else self.video.removeAttribute('data-active');
+					main.fullscreen.activated = false;
 				}
 			},
 			unreachable: {
@@ -401,9 +405,11 @@ var main = {
 				this.video.addEventListener('canplay', canplay);
 
 				video.src(function(src) {
-					self.progress = 0;
-					self.src = src;
-					callback();
+					if(src) {
+						self.progress = 0;
+						self.src = src;
+						callback();
+					}
 				});
 			}
 		};
@@ -699,17 +705,63 @@ var main = {
 			});
 		}
 	},
+	fullscreen: {
+		element: document.querySelector('.fullscreen'),
+		get side() {
+			return !main.left.paused ? main.left : main.right;
+		},
+		set hidden(v) {
+			if(v) this.element.setAttribute('data-hidden', '');
+			else this.element.removeAttribute('data-hidden');
+		},
+		get activated() {
+			return document.querySelector('[data-fullscreen]') !== null;
+		},
+		set activated(v) {
+			if(v) {
+				this.side.video.removeAttribute('data-fullscreen-transition');
+				this.side.video.setAttribute('data-fullscreen', '');
+			}
+			else {
+				setTimeout(function() {
+					var activated = document.querySelectorAll('[data-fullscreen]');
+					for(var i = 0; i < activated.length; i++) activated[i].removeAttribute('data-fullscreen');
+				}, 1);
+
+			}
+		},
+		switch: function() {
+			if(this.activated) {
+				self.side.opposite.video.setAttribute('data-fullscreen', '');
+				self.side.opposite.video.setAttribute('data-fullscreen-transition', '');
+			}
+		},
+		init: function() {
+			var self = this;
+
+			window.addEventListener('click', function() {
+				self.activated = false;
+			});
+
+			this.element.addEventListener('click', function(event) {
+				self.activated = true;
+				event.stopPropagation();
+			});
+		}
+	},
 	init: function() {
 		var self = this;
 
 		this.api.init();
 		this.cursor.init();
 		this.config.init();
+		this.fullscreen.init();
 		this.left = new this.Side('left', 'right');
 		this.right = new this.Side('right', 'left');
 
 		var click = function() {
-			if(!self.left.focused && !self.right.focused) {
+			if(!self.left.focused && !self.right.focused && !main.fullscreen.activated) {
+				main.fullscreen.switch();
 				var play;
 				if(self.left.paused && !self.right.paused) {
 					self.left.loading = true;

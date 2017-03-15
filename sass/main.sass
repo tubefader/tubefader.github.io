@@ -22,15 +22,36 @@ section
 	vertical-align: top
 
 video
+	background: $black
 	width: 100%
 	top: 50%
 	height: auto
 	position: absolute
 	z-index: 1
 	opacity: 0.1
-	transition: 0.7s
+	transition: opacity 0.7s
 	transform: translateY(-50%)
 	&[data-active]
+		opacity: 1
+	&[data-fullscreen]
+		background: $black !important
+		width: 100%
+		height: 100%
+		top: 0
+		left: 0
+		z-index: 1000
+		opacity: 1
+		position: fixed
+		transform: translateY(0)
+		transition: 0
+	&[data-fullscreen-transition]
+		z-index: 1001
+		animation: fullscreen 5s 1
+
+@keyframes fullscreen
+	0%
+		opacity: 0
+	100%
 		opacity: 1
 
 .search
@@ -220,12 +241,34 @@ video
 			opacity: 1
 			transform: translateY(calc(-100% - 30px))
 
+.fullscreen
+	background: $black
+	padding: 4px 3px 2px 3px
+	cursor: pointer
+	width: 74px
+	top: 100%
+	left: 0
+	margin: -30px 0 0 20px
+	z-index: 3
+	display: block
+	position: absolute
+	font-size: 9px
+	font-weight: bold
+	color: $white
+	text-transform: uppercase
+	letter-spacing: 1px
+	border-radius: 3px
+	transition: 0.4s
+	&[data-hidden]
+		display: none
+
+
 [data-init]
 	.search:not([data-visible]):not([data-unreachable])
 		opacity: 0
 
 [data-cursor-hidden]
-	.config
+	.config, .fullscreen
 		opacity: 0
 		&:hover
 			opacity: 1
